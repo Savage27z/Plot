@@ -12,6 +12,9 @@ import Dialogue from "./overlay/Dialogue";
 import ReadTableButton from "./overlay/ReadTableButton";
 import Toast from "./overlay/Toast";
 import CardInspect from "./overlay/CardInspect";
+import AddCard from "./overlay/AddCard";
+import { decodeTable } from "@/lib/share";
+import { startHum, stopHum } from "@/lib/audio";
 import MobileGate from "./overlay/MobileGate";
 import HudFrame from "./overlay/HudFrame";
 
@@ -39,19 +42,52 @@ function scatterPositions(cards: PlotCard[]): Record<string, CardPosition> {
 }
 
 function describeTable() {
-  const { problem, cards, positions, readCount } = usePlot.getState();
+  const { problem, cards, positions, readCount, lastReadPositions } =
+    usePlot.getState();
   const clusters = computeClusters(positions);
   const named = (id: string) => {
     const c = cards.find((c) => c.id === id);
     return c ? `${id} ("${c.title}")` : id;
   };
+
+  // what changed since the strategist last read the table
+  const moves: string[] = [];
+  if (lastReadPositions) {
+    for (const c of cards) {
+      const prev = lastReadPositions[c.id];
+      const cur = positions[c.id];
+      if (!cur) continue;
+      if (!prev) {
+        moves.push(`- ${named(c.id)} is NEW on the table${c.userAdded ? " (added by the user themselves)" : ""}`);
+        continue;
+      }
+      const dist = Math.hypot(cur.x - prev.x, cur.z - prev.z);
+      if (dist > 1.2) {
+        const before = Math.hypot(prev.x, prev.z);
+        const after = Math.hypot(cur.x, cur.z);
+        const dir =
+          after < before - 0.8
+            ? "toward the center"
+            : after > before + 0.8
+              ? "out toward the edge"
+              : "across the table";
+        moves.push(
+          `- ${named(c.id)} moved ${dir} (from ${prev.x.toFixed(1)},${prev.z.toFixed(1)} to ${cur.x.toFixed(1)},${cur.z.toFixed(1)})`
+        );
+      }
+    }
+  }
+
   return [
     readCount === 0
       ? `THE DECISION: ${problem}`
       : `RE-READING the same table (reading #${readCount + 1}). The decision is unchanged.`,
     "",
     "CARDS:",
-    ...cards.map((c) => `- ${c.id} [${c.type}] "${c.title}": ${c.body}`),
+    ...cards.map(
+      (c) =>
+        `- ${c.id} [${c.type}] "${c.title}": ${c.body}${c.userAdded ? " (added by the user themselves — they know something you don't)" : ""}`
+    ),
     "",
     "POSITIONS (x,z on the table, origin = table center):",
     ...cards.map((c) => {
@@ -67,6 +103,11 @@ function describeTable() {
     }`,
     `- isolated cards: ${clusters.isolated.length ? clusters.isolated.map(named).join(", ") : "none"}`,
     `- nearest the center of the table: ${named(clusters.nearestCenter)}`,
+    ...(moves.length
+      ? ["", "MOVED SINCE YOUR LAST READING (react to these specifically):", ...moves]
+      : lastReadPositions
+        ? ["", "Nothing meaningfully moved since your last reading. Call that out."]
+        : []),
   ].join("\n");
 }
 
@@ -79,6 +120,25 @@ export default function PlotApp() {
       (window as unknown as Record<string, unknown>).__plot = usePlot;
     }
   }, []);
+
+  // hydrate a shared table from the URL hash (#t=...)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#t=")) return;
+    const decoded = decodeTable(hash.slice(3));
+    if (!decoded) return;
+    const s = usePlot.getState();
+    s.setProblem(decoded.problem);
+    s.setCards(decoded.cards, decoded.positions);
+    s.setPhase("table");
+  }, []);
+
+  // the orb hums while it speaks (only when sound is on)
+  const audioOn = usePlot((s) => s.audioOn);
+  useEffect(() => {
+    if (audioOn && (phase === "speaking" || phase === "verdict")) startHum();
+    else stopHum();
+  }, [phase, audioOn]);
   const toast = usePlot((s) => s.toast);
 
   const fail = useCallback((msg?: string) => {
@@ -129,6 +189,7 @@ export default function PlotApp() {
       st.pushHistory({ role: "assistant", content: JSON.stringify(data) });
       st.pushAnalysis(data);
       st.bumpReadCount();
+      st.snapshotPositions();
       st.setObsIndex(0);
       st.setActiveCard(data.observations[0]?.cardId ?? null);
       st.setPhase("speaking");
@@ -157,6 +218,7 @@ export default function PlotApp() {
         st.pushHistory({ role: "user", content });
         st.pushHistory({ role: "assistant", content: JSON.stringify(data) });
         st.pushAnalysis(data);
+        st.snapshotPositions();
         st.setObsIndex(0);
         st.setActiveCard(data.observations[0]?.cardId ?? null);
         st.setPhase("speaking");
@@ -189,6 +251,7 @@ export default function PlotApp() {
       {(phase === "table" || phase === "reading") && (
         <ReadTableButton onTrigger={readTable} busy={phase === "reading"} />
       )}
+      {phase === "table" && <AddCard />}
       {(phase === "speaking" || phase === "verdict") && (
         <Dialogue onRespond={respond} onReread={readTable} />
       )}

@@ -6,6 +6,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { usePlot } from "@/lib/store";
 import { track } from "@/lib/analytics";
+import { cardSlide } from "@/lib/audio";
 import { PlotCard } from "@/lib/types";
 import { livePositions } from "./live";
 
@@ -115,6 +116,7 @@ export default function CardMesh({ card, index }: { card: PlotCard; index: numbe
 
     setPosition(card.id, { x: st.current.target.x, z: st.current.target.z });
     track("card_dragged", { cardId: card.id, type: card.type });
+    cardSlide();
   };
 
   useFrame((state, delta) => {

@@ -5,6 +5,8 @@ import { useState } from "react";
 import { usePlot } from "@/lib/store";
 import { buildMemo } from "@/lib/memo";
 import { track } from "@/lib/analytics";
+import { encodeTable } from "@/lib/share";
+import { startAmbience, stopAmbience } from "@/lib/audio";
 
 const LEGEND: [string, string][] = [
   ["stakeholder", "#6b7d4f"],
@@ -20,9 +22,30 @@ const LEGEND: [string, string][] = [
 export default function HudFrame() {
   const phase = usePlot((s) => s.phase);
   const hasAnalyses = usePlot((s) => s.analyses.length > 0);
+  const audioOn = usePlot((s) => s.audioOn);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   if (phase === "landing" || phase === "decomposing") return null;
+
+  const shareTable = async () => {
+    const { problem, cards, positions } = usePlot.getState();
+    const url = `${window.location.origin}/room#t=${encodeTable(problem, cards, positions)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2500);
+    } catch {
+      window.prompt("copy your table link:", url);
+    }
+  };
+
+  const toggleAudio = () => {
+    const next = !audioOn;
+    usePlot.getState().setAudioOn(next);
+    if (next) startAmbience();
+    else stopAmbience();
+  };
 
   const exportMemo = async () => {
     const { problem, cards, analyses, answers } = usePlot.getState();
@@ -55,14 +78,29 @@ export default function HudFrame() {
         </span>
       </Link>
 
-      {hasAnalyses && (
+      <div className="absolute right-8 top-7 z-30 flex items-center gap-3">
         <button
-          onClick={exportMemo}
-          className="absolute right-8 top-7 z-30 border border-bone/25 px-5 py-2.5 font-mono smallcaps text-xs text-bone/80 transition-colors duration-300 hover:border-bone/60 hover:text-bone"
+          onClick={toggleAudio}
+          className="border border-bone/25 px-4 py-2.5 font-mono smallcaps text-xs text-bone/60 transition-colors duration-300 hover:border-bone/60 hover:text-bone"
+          title="ambient sound"
         >
-          {copied ? "copied to clipboard" : "export memo"}
+          {audioOn ? "sound on" : "sound off"}
         </button>
-      )}
+        <button
+          onClick={shareTable}
+          className="border border-bone/25 px-4 py-2.5 font-mono smallcaps text-xs text-bone/60 transition-colors duration-300 hover:border-bone/60 hover:text-bone"
+        >
+          {shared ? "link copied" : "share table"}
+        </button>
+        {hasAnalyses && (
+          <button
+            onClick={exportMemo}
+            className="border border-bone/25 px-5 py-2.5 font-mono smallcaps text-xs text-bone/80 transition-colors duration-300 hover:border-bone/60 hover:text-bone"
+          >
+            {copied ? "copied to clipboard" : "export memo"}
+          </button>
+        )}
+      </div>
 
       {/* card-type legend */}
       <div className="pointer-events-none absolute bottom-8 left-8 z-30 hidden flex-col gap-1.5 lg:flex">

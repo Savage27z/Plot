@@ -11,6 +11,7 @@ export interface PlotCard {
   type: CardType;
   title: string;
   body: string;
+  userAdded?: boolean;
 }
 
 export interface CardPosition {

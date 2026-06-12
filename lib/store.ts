@@ -25,6 +25,8 @@ interface PlotState {
   toast: string | null;
   readCount: number;
   inspectedId: string | null;
+  audioOn: boolean;
+  lastReadPositions: Record<string, CardPosition> | null;
 
   setPhase: (p: Phase) => void;
   setProblem: (p: string) => void;
@@ -41,6 +43,9 @@ interface PlotState {
   clearToast: () => void;
   bumpReadCount: () => void;
   setInspected: (id: string | null) => void;
+  setAudioOn: (on: boolean) => void;
+  snapshotPositions: () => void;
+  addCard: (card: PlotCard, pos: CardPosition) => void;
 }
 
 export const usePlot = create<PlotState>((set) => ({
@@ -58,6 +63,8 @@ export const usePlot = create<PlotState>((set) => ({
   toast: null,
   readCount: 0,
   inspectedId: null,
+  audioOn: false,
+  lastReadPositions: null,
 
   setPhase: (phase) => set({ phase }),
   setProblem: (problem) => set({ problem }),
@@ -75,4 +82,11 @@ export const usePlot = create<PlotState>((set) => ({
   clearToast: () => set({ toast: null }),
   bumpReadCount: () => set((s) => ({ readCount: s.readCount + 1 })),
   setInspected: (inspectedId) => set({ inspectedId }),
+  setAudioOn: (audioOn) => set({ audioOn }),
+  snapshotPositions: () => set((s) => ({ lastReadPositions: { ...s.positions } })),
+  addCard: (card, pos) =>
+    set((s) => ({
+      cards: [...s.cards, card],
+      positions: { ...s.positions, [card.id]: pos },
+    })),
 }));
