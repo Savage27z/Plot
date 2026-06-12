@@ -37,7 +37,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${instrument.variable} ${plexMono.variable}`}>
       <head>
-        {/* NOVUS/PENDO SNIPPET HERE — do not remove */}
+        <script dangerouslySetInnerHTML={{ __html: `
+(function(apiKey){
+    (function(p,e,n,d,o){var v,w,x,y,z;o=p[d]=p[d]||{};o._q=o._q||[];
+    v=['initialize','identify','updateOptions','pageLoad','track','trackAgent'];for(w=0,x=v.length;w<x;++w)(function(m){
+    o[m]=o[m]||function(){o._q[m===v[0]?'unshift':'push']([m].concat([].slice.call(arguments,0)));};})(v[w]);
+    y=e.createElement(n);y.async=!0;y.src='https://cdn.pendo.io/agent/static/'+apiKey+'/pendo.js';
+    z=e.getElementsByTagName(n)[0];z.parentNode.insertBefore(y,z);})(window,document,'script','pendo');
+})('fd54939b-8dee-49c9-bf25-ee3a294dc048');
+
+pendo.initialize({ visitor: { id: '' } });
+` }} />
       </head>
       <body className="bg-char text-bone antialiased">
         {children}
