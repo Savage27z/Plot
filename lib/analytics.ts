@@ -9,7 +9,10 @@ type EventName =
 
 declare global {
   interface Window {
-    pendo?: { track?: (name: string, props?: Record<string, unknown>) => void };
+    pendo?: {
+      track?: (name: string, props?: Record<string, unknown>) => void;
+      trackAgent?: (eventType: string, metadata: object) => void;
+    };
     novus?: { track?: (name: string, props?: Record<string, unknown>) => void };
   }
 }

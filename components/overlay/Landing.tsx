@@ -11,21 +11,21 @@ const EXAMPLES = [
   "Expand to enterprise now, or double down on self-serve growth for another year?",
 ];
 
-export default function Landing({ onSubmit }: { onSubmit: (p: string) => void }) {
+export default function Landing({ onSubmit }: { onSubmit: (p: string, suggested?: boolean) => void }) {
   const phase = usePlot((s) => s.phase);
   const [value, setValue] = useState("");
   const [nudge, setNudge] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const busy = phase === "decomposing";
 
-  const submit = (text?: string) => {
+  const submit = (text?: string, suggested?: boolean) => {
     const trimmed = (text ?? value).trim();
     if (trimmed.length < 12) {
       setNudge(true);
       inputRef.current?.focus();
       return;
     }
-    onSubmit(trimmed);
+    onSubmit(trimmed, suggested);
   };
 
   return (
@@ -133,7 +133,7 @@ export default function Landing({ onSubmit }: { onSubmit: (p: string) => void })
                 key={ex}
                 onClick={() => {
                   setValue(ex);
-                  submit(ex);
+                  submit(ex, true);
                 }}
                 className="border border-bone/10 bg-bone/[0.03] px-4 py-2 font-serif text-sm italic text-bone/55 transition-colors duration-300 hover:border-bone/35 hover:text-bone"
               >

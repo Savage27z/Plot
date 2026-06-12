@@ -20,6 +20,14 @@ import HudFrame from "./overlay/HudFrame";
 
 const Scene = dynamic(() => import("./scene/Scene"), { ssr: false });
 
+const AGENT_ID = "Uogi4ZCWrTWJQTCx686Gy4pk_3c";
+let _conversationId: string | null = null;
+function getConversationId(): string {
+  if (!_conversationId) _conversationId = crypto.randomUUID();
+  return _conversationId;
+}
+let lastAgentMessageId: string | null = null;
+
 // Tidy scatter: jittered grid inside the playable area, no overlaps.
 function scatterPositions(cards: PlotCard[]): Record<string, CardPosition> {
   const positions: Record<string, CardPosition> = {};
@@ -148,11 +156,21 @@ export default function PlotApp() {
   }, []);
 
   const submitProblem = useCallback(
-    async (problem: string) => {
+    async (problem: string, suggested?: boolean) => {
       const s = usePlot.getState();
       s.setProblem(problem);
       s.setPhase("decomposing");
       track("problem_submitted");
+      const promptMessageId = crypto.randomUUID();
+      try {
+        window.pendo?.trackAgent?.("prompt", {
+          agentId: AGENT_ID,
+          conversationId: getConversationId(),
+          messageId: promptMessageId,
+          content: problem,
+          suggestedPrompt: suggested ?? false,
+        });
+      } catch { /* analytics must never break the product */ }
       try {
         const res = await fetch("/api/strategist", {
           method: "POST",
@@ -161,6 +179,16 @@ export default function PlotApp() {
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
+        const responseMessageId = crypto.randomUUID();
+        lastAgentMessageId = responseMessageId;
+        try {
+          window.pendo?.trackAgent?.("agent_response", {
+            agentId: AGENT_ID,
+            conversationId: getConversationId(),
+            messageId: responseMessageId,
+            content: JSON.stringify(data.cards),
+          });
+        } catch { /* analytics must never break the product */ }
         usePlot.getState().setCards(data.cards, scatterPositions(data.cards));
         usePlot.getState().setPhase("table");
       } catch {
@@ -173,9 +201,28 @@ export default function PlotApp() {
 
   const readTable = useCallback(async () => {
     const s = usePlot.getState();
+    if (s.phase === "verdict" && lastAgentMessageId) {
+      try {
+        window.pendo?.trackAgent?.("user_reaction", {
+          agentId: AGENT_ID,
+          conversationId: getConversationId(),
+          messageId: lastAgentMessageId,
+          content: "retry",
+        });
+      } catch { /* analytics must never break the product */ }
+    }
     s.setPhase("reading");
     track("table_read");
     const content = describeTable();
+    const promptMessageId = crypto.randomUUID();
+    try {
+      window.pendo?.trackAgent?.("prompt", {
+        agentId: AGENT_ID,
+        conversationId: getConversationId(),
+        messageId: promptMessageId,
+        content: content,
+      });
+    } catch { /* analytics must never break the product */ }
     try {
       const res = await fetch("/api/strategist", {
         method: "POST",
@@ -184,6 +231,16 @@ export default function PlotApp() {
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      const responseMessageId = crypto.randomUUID();
+      lastAgentMessageId = responseMessageId;
+      try {
+        window.pendo?.trackAgent?.("agent_response", {
+          agentId: AGENT_ID,
+          conversationId: getConversationId(),
+          messageId: responseMessageId,
+          content: JSON.stringify(data),
+        });
+      } catch { /* analytics must never break the product */ }
       const st = usePlot.getState();
       st.pushHistory({ role: "user", content });
       st.pushHistory({ role: "assistant", content: JSON.stringify(data) });
@@ -205,6 +262,15 @@ export default function PlotApp() {
       s.setPhase("reading");
       track("response_sent");
       const content = `MY ANSWER to your question: ${answer}\n\nThe table as it stands now:\n${describeTable()}`;
+      const promptMessageId = crypto.randomUUID();
+      try {
+        window.pendo?.trackAgent?.("prompt", {
+          agentId: AGENT_ID,
+          conversationId: getConversationId(),
+          messageId: promptMessageId,
+          content: answer,
+        });
+      } catch { /* analytics must never break the product */ }
       try {
         const res = await fetch("/api/strategist", {
           method: "POST",
@@ -213,6 +279,16 @@ export default function PlotApp() {
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
+        const responseMessageId = crypto.randomUUID();
+        lastAgentMessageId = responseMessageId;
+        try {
+          window.pendo?.trackAgent?.("agent_response", {
+            agentId: AGENT_ID,
+            conversationId: getConversationId(),
+            messageId: responseMessageId,
+            content: JSON.stringify(data),
+          });
+        } catch { /* analytics must never break the product */ }
         const st = usePlot.getState();
         st.pushAnswer(answer);
         st.pushHistory({ role: "user", content });
