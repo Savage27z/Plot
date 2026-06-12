@@ -13,20 +13,22 @@ export default function CameraDolly() {
   const progress = useRef(0);
   const active = useRef(false);
   const done = useRef(false);
+  const prevPhase = useRef(usePlot.getState().phase);
 
   useEffect(() => {
-    return usePlot.subscribe(
-      (s) => s.phase,
-      (phase) => {
-        if (phase === "decomposing" && !done.current) {
-          camera.position.copy(START);
-          active.current = true;
-        }
-        if (phase === "table" && active.current) {
-          progress.current = 0;
-        }
+    return usePlot.subscribe((state) => {
+      const phase = state.phase;
+      if (phase === prevPhase.current) return;
+      prevPhase.current = phase;
+
+      if (phase === "decomposing" && !done.current) {
+        camera.position.copy(START);
+        active.current = true;
       }
-    );
+      if (phase === "table" && active.current) {
+        progress.current = 0;
+      }
+    });
   }, [camera]);
 
   useFrame((_, delta) => {
