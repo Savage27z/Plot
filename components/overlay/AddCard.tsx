@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlot } from "@/lib/store";
+import { track } from "@/lib/analytics";
 import { CardType } from "@/lib/types";
 
 const TYPES: { type: CardType; color: string }[] = [
@@ -36,6 +37,12 @@ export default function AddCard() {
       // deal it onto the near edge, roughly in front of the user
       { x: (Math.random() - 0.5) * 4, z: 3.6 }
     );
+    track("card_added", {
+      cardType: type,
+      titleLength: title.trim().slice(0, 60).length,
+      hasBody: body.trim().length > 0,
+      totalCardCount: s.cards.length + 1,
+    });
     setTitle("");
     setBody("");
     setOpen(false);

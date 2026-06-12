@@ -5,7 +5,11 @@ type EventName =
   | "card_dragged"
   | "table_read"
   | "memo_exported"
-  | "response_sent";
+  | "response_sent"
+  | "card_added"
+  | "table_shared"
+  | "shared_table_loaded"
+  | "decision_decomposed";
 
 declare global {
   interface Window {

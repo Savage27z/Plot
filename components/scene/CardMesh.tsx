@@ -115,7 +115,13 @@ export default function CardMesh({ card, index }: { card: PlotCard; index: numbe
     }
 
     setPosition(card.id, { x: st.current.target.x, z: st.current.target.z });
-    track("card_dragged", { cardId: card.id, type: card.type });
+    track("card_dragged", {
+      cardId: card.id,
+      type: card.type,
+      x: Math.round(st.current.target.x * 10) / 10,
+      z: Math.round(st.current.target.z * 10) / 10,
+      distanceFromCenter: Math.round(Math.hypot(st.current.target.x, st.current.target.z) * 10) / 10,
+    });
     cardSlide();
   };
 
