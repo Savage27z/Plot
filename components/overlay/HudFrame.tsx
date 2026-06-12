@@ -35,6 +35,13 @@ export default function HudFrame() {
       await navigator.clipboard.writeText(url);
       setShared(true);
       setTimeout(() => setShared(false), 2500);
+      const s = usePlot.getState();
+      track("table_shared", {
+        cardCount: cards.length,
+        hasAnalysis: s.analyses.length > 0,
+        readCount: s.readCount,
+        userAddedCardCount: cards.filter((c) => c.userAdded).length,
+      });
     } catch {
       window.prompt("copy your table link:", url);
     }
@@ -57,7 +64,12 @@ export default function HudFrame() {
     a.download = "plot-memo.md";
     a.click();
     URL.revokeObjectURL(url);
-    track("memo_exported");
+    track("memo_exported", {
+      cardCount: cards.length,
+      analysisCount: analyses.length,
+      answerCount: answers.length,
+      userAddedCardCount: cards.filter((c) => c.userAdded).length,
+    });
     try {
       await navigator.clipboard.writeText(md);
       setCopied(true);

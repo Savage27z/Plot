@@ -139,6 +139,10 @@ export default function PlotApp() {
     s.setProblem(decoded.problem);
     s.setCards(decoded.cards, decoded.positions);
     s.setPhase("table");
+    track("shared_table_loaded", {
+      cardCount: decoded.cards.length,
+      problemLength: decoded.problem.length,
+    });
   }, []);
 
   // the orb hums while it speaks (only when sound is on)
@@ -156,11 +160,14 @@ export default function PlotApp() {
   }, []);
 
   const submitProblem = useCallback(
-    async (problem: string, suggested?: boolean) => {
+    async (problem: string, isExample: boolean) => {
       const s = usePlot.getState();
       s.setProblem(problem);
       s.setPhase("decomposing");
-      track("problem_submitted");
+      track("problem_submitted", {
+        problemLength: problem.length,
+        isExample,
+      });
       const promptMessageId = crypto.randomUUID();
       try {
         window.pendo?.trackAgent?.("prompt", {
@@ -168,7 +175,7 @@ export default function PlotApp() {
           conversationId: getConversationId(),
           messageId: promptMessageId,
           content: problem,
-          suggestedPrompt: suggested ?? false,
+          suggestedPrompt: isExample,
         });
       } catch { /* analytics must never break the product */ }
       try {
@@ -179,6 +186,7 @@ export default function PlotApp() {
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
+        const cards = data.cards as PlotCard[];
         const responseMessageId = crypto.randomUUID();
         lastAgentMessageId = responseMessageId;
         try {
@@ -186,11 +194,21 @@ export default function PlotApp() {
             agentId: AGENT_ID,
             conversationId: getConversationId(),
             messageId: responseMessageId,
-            content: JSON.stringify(data.cards),
+            content: JSON.stringify(cards),
           });
         } catch { /* analytics must never break the product */ }
-        usePlot.getState().setCards(data.cards, scatterPositions(data.cards));
+        usePlot.getState().setCards(cards, scatterPositions(cards));
         usePlot.getState().setPhase("table");
+        track("decision_decomposed", {
+          cardCount: cards.length,
+          stakeholderCount: cards.filter((c) => c.type === "stakeholder").length,
+          constraintCount: cards.filter((c) => c.type === "constraint").length,
+          dependencyCount: cards.filter((c) => c.type === "dependency").length,
+          evidenceCount: cards.filter((c) => c.type === "evidence").length,
+          optionCount: cards.filter((c) => c.type === "option").length,
+          riskCount: cards.filter((c) => c.type === "risk").length,
+          problemLength: problem.length,
+        });
       } catch {
         usePlot.getState().setPhase("landing");
         fail();
@@ -212,7 +230,14 @@ export default function PlotApp() {
       } catch { /* analytics must never break the product */ }
     }
     s.setPhase("reading");
-    track("table_read");
+    const clusters = computeClusters(s.positions);
+    track("table_read", {
+      cardCount: s.cards.length,
+      readCount: s.readCount,
+      clusterCount: clusters.clusters.length,
+      isolatedCount: clusters.isolated.length,
+      userAddedCardCount: s.cards.filter((c) => c.userAdded).length,
+    });
     const content = describeTable();
     const promptMessageId = crypto.randomUUID();
     try {
@@ -260,7 +285,11 @@ export default function PlotApp() {
     async (answer: string) => {
       const s = usePlot.getState();
       s.setPhase("reading");
-      track("response_sent");
+      track("response_sent", {
+        answerLength: answer.length,
+        readCount: s.readCount,
+        cardCount: s.cards.length,
+      });
       const content = `MY ANSWER to your question: ${answer}\n\nThe table as it stands now:\n${describeTable()}`;
       const promptMessageId = crypto.randomUUID();
       try {

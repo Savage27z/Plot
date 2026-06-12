@@ -11,7 +11,7 @@ const EXAMPLES = [
   "Expand to enterprise now, or double down on self-serve growth for another year?",
 ];
 
-export default function Landing({ onSubmit }: { onSubmit: (p: string, suggested?: boolean) => void }) {
+export default function Landing({ onSubmit }: { onSubmit: (p: string, isExample: boolean) => void }) {
   const phase = usePlot((s) => s.phase);
   const [value, setValue] = useState("");
   const [nudge, setNudge] = useState(false);
@@ -25,7 +25,7 @@ export default function Landing({ onSubmit }: { onSubmit: (p: string, suggested?
       inputRef.current?.focus();
       return;
     }
-    onSubmit(trimmed, suggested);
+    onSubmit(trimmed, text !== undefined);
   };
 
   return (
