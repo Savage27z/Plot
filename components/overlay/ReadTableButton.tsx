@@ -1,11 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 const HOLD_MS = 850;
 
-// Primary action: long-press to confirm — the fill completes, then fires.
+const THINKING_LINES = [
+  "the strategist is studying the table",
+  "counting what you clustered",
+  "weighing what you exiled",
+  "reading the center of your thinking",
+  "noticing what moved",
+];
+
 export default function ReadTableButton({
   onTrigger,
   busy,
@@ -14,7 +21,16 @@ export default function ReadTableButton({
   busy: boolean;
 }) {
   const [holding, setHolding] = useState(false);
+  const [lineIdx, setLineIdx] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!busy) { setLineIdx(0); return; }
+    const iv = setInterval(() => {
+      setLineIdx((i) => (i + 1) % THINKING_LINES.length);
+    }, 3400);
+    return () => clearInterval(iv);
+  }, [busy]);
 
   const start = () => {
     if (busy) return;
@@ -37,10 +53,16 @@ export default function ReadTableButton({
       transition={{ duration: 0.9, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
     >
       {busy ? (
-        <p className="font-serif italic text-bone/90 text-xl">
-          the strategist is studying the table
-          <span className="cursor-blink text-ember">{" "}▌</span>
-        </p>
+        <motion.p
+          key={lineIdx}
+          className="font-serif italic text-bone/90 text-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {THINKING_LINES[lineIdx]}
+          <span className="cursor-blink text-ember">{" "}{"▌"}</span>
+        </motion.p>
       ) : (
         <>
           <button

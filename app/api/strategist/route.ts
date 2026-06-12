@@ -52,7 +52,7 @@ interface AnthropicMessage {
 
 // Uses OpenRouter when OPENROUTER_API_KEY is set, otherwise falls back to
 // the Anthropic API with ANTHROPIC_API_KEY.
-async function callModel(
+async function callModelOnce(
   system: string,
   messages: AnthropicMessage[]
 ): Promise<string> {
@@ -74,7 +74,10 @@ async function callModel(
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`openrouter ${res.status}: ${detail.slice(0, 300)}`);
+      throw Object.assign(
+        new Error(`openrouter ${res.status}: ${detail.slice(0, 300)}`),
+        { status: res.status }
+      );
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
@@ -100,7 +103,10 @@ async function callModel(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`anthropic ${res.status}: ${detail.slice(0, 300)}`);
+    throw Object.assign(
+      new Error(`anthropic ${res.status}: ${detail.slice(0, 300)}`),
+      { status: res.status }
+    );
   }
   const data = await res.json();
   const text = (data.content ?? [])
@@ -109,6 +115,22 @@ async function callModel(
     .join("");
   if (!text) throw new Error("empty completion");
   return text;
+}
+
+async function callModel(
+  system: string,
+  messages: AnthropicMessage[]
+): Promise<string> {
+  try {
+    return await callModelOnce(system, messages);
+  } catch (err: any) {
+    const s = err?.status;
+    if (s === 429 || (s >= 500 && s < 600)) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return callModelOnce(system, messages);
+    }
+    throw err;
+  }
 }
 
 // Strip code fences / leading prose and parse the first JSON value found.

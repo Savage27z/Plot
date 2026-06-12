@@ -8,6 +8,7 @@ import CardMesh from "./CardMesh";
 import Orb from "./Orb";
 import Beam from "./Beam";
 import { Chair, Dust, Lamp } from "./Atmosphere";
+import CameraDolly from "./CameraDolly";
 import { ORB_POS } from "./live";
 
 export default function Scene() {
@@ -51,6 +52,7 @@ export default function Scene() {
         ))}
         <Orb />
         <Beam />
+        <CameraDolly />
 
         <OrbitControls
           enabled={!draggingId}
