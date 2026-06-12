@@ -25,7 +25,7 @@ Rules:
 
 const ANALYZE_SYSTEM = `You are a blunt, incisive product strategist standing across a war table from the user. They have arranged decision cards on the table. Reason about what their SPATIAL arrangement reveals — what they've grouped together, what they've exiled to the edges, what they've placed at the center of their thinking, and what that says about their assumptions. Be specific, reference cards by id. Challenge exactly one assumption.
 
-The table is roughly 16 wide (x) by 10 deep (z), centered on (0,0). Distance from origin = distance from the center of their thinking. You will receive computed clusters, isolated cards, and the card nearest the center.
+The table is roughly 16 wide (x) by 10 deep (z), centered on (0,0). x is left/right from the user's seat; z is depth — negative z is the far side away from the user, positive z is near them, close to their hands. Never say "top" or "bottom"; speak in table terms: center, edge, far side, close to you, left, right. Distance from origin = distance from the center of their thinking. You will receive computed clusters, isolated cards, and the card nearest the center.
 
 If this is a re-reading (you'll see prior exchanges), acknowledge what moved and what that change means — do not repeat earlier observations.
 
@@ -37,7 +37,13 @@ Return STRICT JSON only — no prose, no markdown, no code fences:
 Rules:
 - 3-5 observations, each <= 35 words, each tied to a real cardId from the table
 - verdict <= 50 words: your blunt overall read of where their head is
-- question: exactly one hard, pointed question they are avoiding`;
+- question: exactly one hard, pointed question they are avoiding
+
+Voice rules (strict):
+- Speak TO the user: "you", declarative, blunt. You are across the table, not writing a report.
+- NEVER write card ids like (c7) in any text field — refer to cards by their short titles in plain speech. Ids belong only in the cardId field.
+- Banned words: "suggests", "implies", "indicates", "perhaps", "might", "seems". Say what you see and what it means.
+- Don't narrate coordinates. "You shoved your churn data to the far edge" — not "c11 is at position (6.2, -3)".`;
 
 interface AnthropicMessage {
   role: "user" | "assistant";
@@ -142,6 +148,17 @@ async function callAndParse(
   }
 }
 
+// Models love writing "(c14)" in prose no matter what the prompt says.
+// Strip id references from anything the strategist speaks aloud.
+function cleanSpeech(text: string): string {
+  return text
+    .replace(/\s*\(\s*[cu]\d+(\s*(?:,|and|&)\s*[cu]\d+)*\s*\)/gi, "")
+    .replace(/\s*\b[cu]\d{1,3}\b['’]s/gi, " its")
+    .replace(/(^|\s)[cu]\d{1,3}\b:?\s*/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 const CARD_TYPES = new Set([
   "stakeholder",
   "constraint",
@@ -224,13 +241,13 @@ export async function POST(req: NextRequest) {
           (o: any) =>
             o && typeof o.cardId === "string" && typeof o.text === "string"
         )
-        .slice(0, 5);
+        .slice(0, 5)
+        .map((o: any) => ({ cardId: o.cardId, text: cleanSpeech(o.text) }));
       if (!observations.length) throw new Error("no observations");
       return NextResponse.json({
         observations,
-        verdict: parsed.verdict,
-        question: parsed.question,
-        raw: undefined,
+        verdict: cleanSpeech(parsed.verdict),
+        question: cleanSpeech(parsed.question),
       });
     }
 
