@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --char: #0c0b09;
+  --bone: #e8e2d4;
+  --ember: #ff6b35;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--char);
+}
+
+::selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: var(--bone);
+}
+
+/* slow-breathing block caret for the landing input */
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+.caret-breathe {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+/* blinking block cursor for the strategist's typewriter */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* film grain overlay — pure CSS, no postprocessing cost in the GL scene */
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-4%, 3%); }
+  40% { transform: translate(3%, -4%); }
+  60% { transform: translate(-3%, -2%); }
+  80% { transform: translate(4%, 2%); }
+  100% { transform: translate(0, 0); }
+}
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 90;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain-shift 1.2s steps(6) infinite;
+}
+
+/* vignette to pull the eye to the table */
+.vignette::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  background: radial-gradient(
+    ellipse 75% 70% at 50% 45%,
+    transparent 55%,
+    rgba(5, 4, 3, 0.55) 100%
+  );
+}
+
+.smallcaps {
+  font-variant: all-small-caps;
+  letter-spacing: 0.18em;
+}
