@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlot } from "@/lib/store";
+import { buildMemo } from "@/lib/memo";
 import Typewriter from "./Typewriter";
 
 // The strategist speaks: observations one at a time (click / space to advance),
@@ -23,6 +24,7 @@ export default function Dialogue({
   const [answer, setAnswer] = useState("");
 
   const speaking = phase === "speaking";
+  const isFinal = analyses.length >= 3 && phase === "verdict";
   const obs = analysis?.observations[obsIndex];
   const card = obs ? cards.find((c) => c.id === obs.cardId) : undefined;
 
@@ -97,60 +99,92 @@ export default function Dialogue({
               className="border-t border-ember/40 bg-char/90 px-8 py-7 backdrop-blur-sm"
             >
               <p className="font-mono smallcaps text-[11px] tracking-[0.25em] text-ember mb-3">
-                the strategist · verdict
+                the strategist · {isFinal ? "final verdict" : "verdict"}
               </p>
               <p className="font-serif text-bone text-xl leading-snug">
                 {analysis.verdict}
               </p>
-              <p className="font-serif italic text-ember/90 text-2xl leading-snug mt-5">
+              <p className={`font-serif italic text-2xl leading-snug mt-5 ${isFinal ? "text-bone/90" : "text-ember/90"}`}>
                 {analysis.question}
               </p>
 
-              <div className="mt-6 flex items-end gap-3">
-                <textarea
-                  rows={2}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      if (answer.trim().length >= 3) {
-                        onRespond(answer.trim());
-                        setAnswer("");
-                      }
-                    }
-                  }}
-                  placeholder="answer the strategist…"
-                  maxLength={500}
-                  className="flex-1 bg-transparent border-b border-bone/20 font-serif text-bone text-lg placeholder:text-bone/30 outline-none resize-none pb-2 focus:border-bone/45 transition-colors"
-                />
-                <button
-                  onClick={() => {
-                    if (answer.trim().length >= 3) {
-                      onRespond(answer.trim());
-                      setAnswer("");
-                    }
-                  }}
-                  className="font-mono smallcaps text-xs border border-bone/25 px-4 py-2 text-bone/80 hover:border-bone/60 hover:text-bone transition-colors duration-300"
-                >
-                  send
-                </button>
-              </div>
+              {!isFinal && (
+                <>
+                  <div className="mt-6 flex items-end gap-3">
+                    <textarea
+                      rows={2}
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          if (answer.trim().length >= 3) {
+                            onRespond(answer.trim());
+                            setAnswer("");
+                          }
+                        }
+                      }}
+                      placeholder="answer the strategist…"
+                      maxLength={500}
+                      className="flex-1 bg-transparent border-b border-bone/20 font-serif text-bone text-lg placeholder:text-bone/30 outline-none resize-none pb-2 focus:border-bone/45 transition-colors"
+                    />
+                    <button
+                      onClick={() => {
+                        if (answer.trim().length >= 3) {
+                          onRespond(answer.trim());
+                          setAnswer("");
+                        }
+                      }}
+                      className="font-mono smallcaps text-xs border border-bone/25 px-4 py-2 text-bone/80 hover:border-bone/60 hover:text-bone transition-colors duration-300"
+                    >
+                      send
+                    </button>
+                  </div>
 
-              <div className="mt-5 flex gap-6">
-                <button
-                  onClick={() => usePlot.getState().setPhase("table")}
-                  className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
-                >
-                  ← rearrange the table
-                </button>
-                <button
-                  onClick={onReread}
-                  className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
-                >
-                  read it again
-                </button>
-              </div>
+                  <div className="mt-5 flex gap-6">
+                    <button
+                      onClick={() => usePlot.getState().setPhase("table")}
+                      className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
+                    >
+                      ← rearrange the table
+                    </button>
+                    <button
+                      onClick={onReread}
+                      className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
+                    >
+                      read it again
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {isFinal && (
+                <div className="mt-7 flex gap-6">
+                  <button
+                    onClick={() => {
+                      const s = usePlot.getState();
+                      const memo = buildMemo(s.problem, s.cards, s.analyses, s.answers);
+                      const blob = new Blob([memo], { type: "text/markdown" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "plot-decision-memo.md";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      navigator.clipboard?.writeText(memo).catch(() => {});
+                    }}
+                    className="border border-ember/50 px-6 py-3 font-mono smallcaps text-sm text-ember/90 transition-colors duration-300 hover:border-ember hover:text-ember"
+                  >
+                    export memo
+                  </button>
+                  <button
+                    onClick={() => usePlot.getState().reset()}
+                    className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
+                  >
+                    start over
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

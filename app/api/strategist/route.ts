@@ -233,6 +233,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.mode === "analyze" || body.mode === "respond") {
+      const isFinal = !!body.isFinal;
       const history: AnthropicMessage[] = Array.isArray(body.history)
         ? body.history
             .filter(
@@ -246,7 +247,11 @@ export async function POST(req: NextRequest) {
       if (!content) {
         return NextResponse.json({ error: "missing content" }, { status: 400 });
       }
-      const parsed = (await callAndParse(ANALYZE_SYSTEM, [
+      const system = isFinal
+        ? ANALYZE_SYSTEM +
+          "\n\nIMPORTANT: This is your FINAL reading of this table. You will not speak again. Give a definitive closing verdict — be conclusive, not exploratory. In the \"question\" field, instead of a question, write a single imperative closing line: what the user should go do now. Start it with a verb. This is the gavel coming down."
+        : ANALYZE_SYSTEM;
+      const parsed = (await callAndParse(system, [
         ...history,
         { role: "user", content },
       ])) as any;

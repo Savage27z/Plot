@@ -252,7 +252,7 @@ export default function PlotApp() {
       const res = await fetch("/api/strategist", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "analyze", content, history: s.history }),
+        body: JSON.stringify({ mode: "analyze", content, history: s.history, isFinal: s.analyses.length >= 2 }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
@@ -304,7 +304,7 @@ export default function PlotApp() {
         const res = await fetch("/api/strategist", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ mode: "respond", content, history: s.history }),
+          body: JSON.stringify({ mode: "respond", content, history: s.history, isFinal: s.analyses.length >= 2 }),
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();

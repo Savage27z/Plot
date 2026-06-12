@@ -46,6 +46,7 @@ interface PlotState {
   setAudioOn: (on: boolean) => void;
   snapshotPositions: () => void;
   addCard: (card: PlotCard, pos: CardPosition) => void;
+  reset: () => void;
 }
 
 export const usePlot = create<PlotState>((set) => ({
@@ -89,4 +90,22 @@ export const usePlot = create<PlotState>((set) => ({
       cards: [...s.cards, card],
       positions: { ...s.positions, [card.id]: pos },
     })),
+  reset: () =>
+    set({
+      phase: "landing",
+      problem: "",
+      cards: [],
+      positions: {},
+      draggingId: null,
+      hoveredId: null,
+      analyses: [],
+      answers: [],
+      history: [],
+      obsIndex: 0,
+      activeCardId: null,
+      toast: null,
+      readCount: 0,
+      inspectedId: null,
+      lastReadPositions: null,
+    }),
 }));
