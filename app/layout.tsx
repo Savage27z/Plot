@@ -46,7 +46,9 @@ export default function RootLayout({
     z=e.getElementsByTagName(n)[0];z.parentNode.insertBefore(y,z);})(window,document,'script','pendo');
 })('fd54939b-8dee-49c9-bf25-ee3a294dc048');
 
-pendo.initialize({ visitor: { id: '' } });
+var vid = localStorage.getItem('plot_vid');
+if (!vid) { vid = 'anon-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('plot_vid', vid); }
+pendo.initialize({ visitor: { id: vid } });
 ` }} />
       </head>
       <body className="bg-char text-bone antialiased">
