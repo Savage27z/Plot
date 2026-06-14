@@ -9,7 +9,9 @@ type EventName =
   | "card_added"
   | "table_shared"
   | "shared_table_loaded"
-  | "decision_decomposed";
+  | "decision_decomposed"
+  | "session_completed"
+  | "session_reset";
 
 declare global {
   interface Window {

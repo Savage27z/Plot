@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlot } from "@/lib/store";
 import { buildMemo } from "@/lib/memo";
+import { track } from "@/lib/analytics";
 import Typewriter from "./Typewriter";
 
 // The strategist speaks: observations one at a time (click / space to advance),
@@ -27,6 +28,20 @@ export default function Dialogue({
   const isFinal = analyses.length >= 3 && phase === "verdict";
   const obs = analysis?.observations[obsIndex];
   const card = obs ? cards.find((c) => c.id === obs.cardId) : undefined;
+
+  const sessionCompletedFired = useRef(false);
+  useEffect(() => {
+    if (isFinal && !sessionCompletedFired.current) {
+      sessionCompletedFired.current = true;
+      const s = usePlot.getState();
+      track("session_completed", {
+        cardCount: s.cards.length,
+        analysisCount: s.analyses.length,
+        answerCount: s.answers.length,
+        userAddedCardCount: s.cards.filter((c) => c.userAdded).length,
+      });
+    }
+  }, [isFinal]);
 
   const advance = useCallback(() => {
     const s = usePlot.getState();
@@ -172,13 +187,28 @@ export default function Dialogue({
                       a.click();
                       URL.revokeObjectURL(url);
                       navigator.clipboard?.writeText(memo).catch(() => {});
+                      track("memo_exported", {
+                        cardCount: s.cards.length,
+                        analysisCount: s.analyses.length,
+                        answerCount: s.answers.length,
+                        userAddedCardCount: s.cards.filter((c) => c.userAdded).length,
+                        source: "final_verdict",
+                      });
                     }}
                     className="border border-ember/50 px-6 py-3 font-mono smallcaps text-sm text-ember/90 transition-colors duration-300 hover:border-ember hover:text-ember"
                   >
                     export memo
                   </button>
                   <button
-                    onClick={() => usePlot.getState().reset()}
+                    onClick={() => {
+                      const s = usePlot.getState();
+                      track("session_reset", {
+                        cardCount: s.cards.length,
+                        analysisCount: s.analyses.length,
+                        answerCount: s.answers.length,
+                      });
+                      s.reset();
+                    }}
                     className="font-mono text-[11px] tracking-[0.2em] uppercase text-bone/40 hover:text-bone/80 transition-colors"
                   >
                     start over
